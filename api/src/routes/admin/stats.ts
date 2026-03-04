@@ -52,10 +52,10 @@ export const adminStatsRoute: FastifyPluginAsyncZod = async (app) => {
 
       const recentOrders = await sql`
         SELECT p.id, p.status, p.valor_total as total_value, p.criado_em as created_at,
-          c.nome as buyer_name, i.nome as inmate_name
+          c.nome as buyer_name, COALESCE(i.nome, p.interno_nome) as inmate_name
         FROM pedidos p
         JOIN compradores c ON p.comprador_id = c.id
-        JOIN internos i ON p.interno_id = i.id
+        LEFT JOIN internos i ON p.interno_id = i.id
         ORDER BY p.criado_em DESC
         LIMIT 5
       `

@@ -1,4 +1,4 @@
-# frontend/Dockerfile
+# api/Dockerfile
 FROM node:20-alpine AS base
 
 # 1. Dependências
@@ -6,6 +6,7 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json ./
+# Instala todas as dependências (incluindo dev para o build)
 RUN npm ci
 
 # 2. Build
@@ -13,28 +14,18 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
-# Variáveis de ambiente de build (precisam estar presentes aqui para o Next.js)
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-
-RUN npm run build
+# Gera o diretório 'dist' através do compilador TypeScript
+RUN npx tsc
 
 # 3. Runner
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV production
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
+# Copia apenas o necessário para rodar
+COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
-USER nextjs
-EXPOSE 3000
-ENV PORT 3000
-
+EXPOSE 3333
 CMD ["npm", "start"]

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { CheckCircle2, AlertCircle, Loader2, FileText, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Loader2, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,7 +18,7 @@ import {
 import { useCart } from '@/lib/cart-store'
 import { formatCurrency } from '@/lib/types'
 import type { BuyerProfile, CheckoutInmateInput } from '@/lib/types'
-import { createOrder, validateSipen } from '@/services/api'
+import { createOrder } from '@/services/api'
 import { toast } from 'sonner'
 
 export function CheckoutDialog({
@@ -36,8 +36,6 @@ export function CheckoutDialog({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [sipenProtocol, setSipenProtocol] = useState('')
-  const [sipenStatus, setSipenStatus] = useState<'idle' | 'validating' | 'approved' | 'rejected'>('idle')
-  const [sipenError, setSipenError] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<'CARTAO' | 'BOLETO' | 'PIX'>('PIX')
   const [prescriptionUrl, setPrescriptionUrl] = useState('')
   const [prescriptionCode, setPrescriptionCode] = useState('')
@@ -49,13 +47,6 @@ export function CheckoutDialog({
     cell: '',
     prison_unit_name: '',
   })
-
-  const canValidateSipen = Boolean(
-    buyer?.cpf?.trim() &&
-    inmateInput.name.trim() &&
-    inmateInput.ward.trim() &&
-    inmateInput.cell.trim()
-  )
 
   const itemCountLabel = useMemo(() => {
     return `${items.length} ${items.length === 1 ? 'item' : 'itens'}`
@@ -69,29 +60,6 @@ export function CheckoutDialog({
     setError('')
     setInmateFound(true)
     setStep('confirm')
-  }
-
-  async function validateSipen() {
-    if (!canValidateSipen) return
-    if (!buyer) {
-      toast.error('Cadastro do comprador nao encontrado')
-      return
-    }
-    setSipenStatus('validating')
-    setSipenError('')
-
-    try {
-      const data = await validateSipen({
-        buyer_cpf: buyer.cpf,
-        inmate: inmateInput,
-      })
-      setSipenStatus('approved')
-      setSipenProtocol(data.protocol)
-    } catch (error) {
-      setSipenStatus('rejected')
-      const message = error instanceof Error ? error.message : 'Erro na validacao SIPEN. Tente novamente.'
-      setSipenError(message)
-    }
   }
 
   async function submitOrder() {
@@ -115,16 +83,10 @@ export function CheckoutDialog({
       return
     }
 
-    if (sipenStatus !== 'approved') {
-      toast.error('Validacao SIPEN obrigatoria antes de confirmar')
-      return
-    }
-
     setSubmitting(true)
     try {
       const data = await createOrder({
         inmate: inmateInput,
-        sipen_protocol: sipenProtocol,
         payment_method: paymentMethod,
         prescription_url: prescriptionUrl || null,
         prescription_code: prescriptionCode || null,
@@ -157,8 +119,6 @@ export function CheckoutDialog({
       setInmateFound(false)
       setError('')
       setSipenProtocol('')
-      setSipenStatus('idle')
-      setSipenError('')
       setPaymentMethod('PIX')
       setPrescriptionUrl('')
       setPrescriptionCode('')
@@ -178,7 +138,7 @@ export function CheckoutDialog({
           <DialogDescription>
             {step === 'search' && 'Informe os dados do interno destinatario.'}
             {step === 'confirm' && 'Revise os dados antes de confirmar.'}
-            {step === 'success' && 'Seu pedido foi registrado e validado pelo SIPEN.'}
+            {step === 'success' && 'Seu pedido foi registrado com sucesso.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -278,29 +238,6 @@ export function CheckoutDialog({
                     />
                   </div>
                 </div>
-              </div>
-              <div className="mt-3 flex flex-col gap-2">
-                <Button
-                  variant="outline"
-                  onClick={validateSipen}
-                  disabled={!canValidateSipen || sipenStatus === 'validating'}
-                  className="gap-2"
-                >
-                  {sipenStatus === 'validating' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                  Validar vinculo SIPEN
-                </Button>
-                {sipenStatus === 'approved' && (
-                  <div className="flex items-center gap-2 text-xs text-emerald-600">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Vinculo validado. Protocolo: {sipenProtocol}
-                  </div>
-                )}
-                {sipenStatus === 'rejected' && sipenError && (
-                  <div className="flex items-center gap-2 text-xs text-destructive">
-                    <AlertCircle className="h-3.5 w-3.5" />
-                    {sipenError}
-                  </div>
-                )}
               </div>
             </div>
 
@@ -430,7 +367,7 @@ export function CheckoutDialog({
             </div>
             <div className="text-center space-y-1">
               <p className="text-sm font-semibold text-foreground">Pedido registrado com sucesso!</p>
-              <p className="text-xs text-muted-foreground">Protocolo SIPEN:</p>
+              <p className="text-xs text-muted-foreground">Protocolo do pedido:</p>
               <p className="font-mono text-sm font-bold text-primary">{sipenProtocol}</p>
             </div>
             <p className="text-center text-xs text-muted-foreground">

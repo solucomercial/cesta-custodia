@@ -130,7 +130,12 @@ CREATE TABLE IF NOT EXISTS produtos (
 CREATE TABLE IF NOT EXISTS pedidos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   comprador_id UUID NOT NULL REFERENCES compradores(id),
-  interno_id UUID NOT NULL REFERENCES internos(id),
+  interno_id UUID REFERENCES internos(id),
+  interno_nome TEXT,
+  interno_matricula TEXT,
+  interno_ala TEXT,
+  interno_cela TEXT,
+  unidade_prisional_nome TEXT,
   status status_pedido DEFAULT 'PENDENTE_SIPEN' NOT NULL,
   protocolo_sipen TEXT,
   valor_total DECIMAL(10,2) NOT NULL DEFAULT 0,

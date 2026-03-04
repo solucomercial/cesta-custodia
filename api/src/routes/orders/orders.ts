@@ -45,10 +45,6 @@ const orderBodySchema = z.object({
   prescription_code: z.string().nullable().optional(),
 })
 
-function normalize(value: string) {
-  return value.trim().toUpperCase()
-}
-
 function generateSipenProtocol() {
   return `SIPEN-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`
 }
@@ -89,14 +85,14 @@ export const ordersRoute: FastifyPluginAsyncZod = async (app) => {
           p.atualizado_em as updated_at,
           c.nome as buyer_name,
           c.cpf as buyer_cpf,
-          i.nome as inmate_name,
-          i.matricula as inmate_registration,
-          up.nome as prison_unit_name,
+          COALESCE(i.nome, p.interno_nome) as inmate_name,
+          COALESCE(i.matricula, p.interno_matricula) as inmate_registration,
+          COALESCE(up.nome, p.unidade_prisional_nome) as prison_unit_name,
           (SELECT COUNT(*) FROM itens_pedido ip WHERE ip.pedido_id = p.id) as item_count
         FROM pedidos p
         JOIN compradores c ON p.comprador_id = c.id
-        JOIN internos i ON p.interno_id = i.id
-        JOIN unidades_prisionais up ON i.unidade_prisional_id = up.id
+        LEFT JOIN internos i ON p.interno_id = i.id
+        LEFT JOIN unidades_prisionais up ON i.unidade_prisional_id = up.id
         ORDER BY p.criado_em DESC
       `
 
@@ -205,19 +201,7 @@ export const ordersRoute: FastifyPluginAsyncZod = async (app) => {
         unidade_prisional_id: string
       }>
 
-      if (internos.length === 0) {
-        return reply.code(404).send({ error: 'Interno nao encontrado no SIPEN' })
-      }
-
       const internal = internos[0]
-      const matches =
-        normalize(internal.nome) === normalize(inmate.name) &&
-        normalize(internal.ala) === normalize(inmate.ward) &&
-        normalize(internal.cela) === normalize(inmate.cell)
-
-      if (!matches) {
-        return reply.code(403).send({ error: 'Dados do interno divergentes' })
-      }
 
       let totalValue = 0
       for (const item of items) {
@@ -227,23 +211,55 @@ export const ordersRoute: FastifyPluginAsyncZod = async (app) => {
       const deliveryFee = calcularFrete(totalValue)
       const fuespTax = calcularFuespTax(totalValue)
 
-      const weekly = (await sql`
-        SELECT COALESCE(SUM(valor_total), 0) as total
-        FROM pedidos
-        WHERE interno_id = ${internal.id}
-          AND criado_em >= now() - interval '7 days'
-      `) as Array<{ total: string | number }>
+      if (internal?.id) {
+        const weekly = (await sql`
+          SELECT COALESCE(SUM(valor_total), 0) as total
+          FROM pedidos
+          WHERE interno_id = ${internal.id}
+            AND criado_em >= now() - interval '7 days'
+        `) as Array<{ total: string | number }>
 
-      const weeklyTotal = Number(weekly[0]?.total ?? 0)
-      if (weeklyTotal + totalValue > WEEKLY_LIMIT) {
-        return reply.code(400).send({ error: 'Limite semanal excedido para este interno' })
+        const weeklyTotal = Number(weekly[0]?.total ?? 0)
+        if (weeklyTotal + totalValue > WEEKLY_LIMIT) {
+          return reply.code(400).send({ error: 'Limite semanal excedido para este interno' })
+        }
       }
 
       const sipenProtocol = sipen_protocol || generateSipenProtocol()
 
       const orderResult = (await sql`
-        INSERT INTO pedidos (comprador_id, interno_id, status, protocolo_sipen, valor_total, frete, taxa_fuesp, url_receita, codigo_validacao_receita)
-        VALUES (${buyer.id}, ${internal.id}, 'PENDENTE_SIPEN', ${sipenProtocol}, ${totalValue}, ${deliveryFee}, ${fuespTax}, ${prescription_url || null}, ${prescription_code || null})
+        INSERT INTO pedidos (
+          comprador_id,
+          interno_id,
+          interno_nome,
+          interno_matricula,
+          interno_ala,
+          interno_cela,
+          unidade_prisional_nome,
+          status,
+          protocolo_sipen,
+          valor_total,
+          frete,
+          taxa_fuesp,
+          url_receita,
+          codigo_validacao_receita
+        )
+        VALUES (
+          ${buyer.id},
+          ${internal?.id ?? null},
+          ${inmate.name},
+          ${inmate.registration || null},
+          ${inmate.ward},
+          ${inmate.cell},
+          ${inmate.prison_unit_name || null},
+          'PENDENTE_SIPEN',
+          ${sipenProtocol},
+          ${totalValue},
+          ${deliveryFee},
+          ${fuespTax},
+          ${prescription_url || null},
+          ${prescription_code || null}
+        )
         RETURNING id
       `) as Array<{ id: string }>
 
@@ -279,11 +295,6 @@ export const ordersRoute: FastifyPluginAsyncZod = async (app) => {
           })})
         `
       }
-
-      await sql`
-        INSERT INTO logs_auditoria (usuario_id, pedido_id, acao, detalhes)
-        VALUES (${session.userId}, ${orderId}, 'VALIDACAO_SIPEN', ${JSON.stringify({ protocol: sipenProtocol, result: 'APROVADO' })})
-      `
 
       return reply.code(201).send({ id: orderId, sipen_protocol: sipenProtocol })
     },

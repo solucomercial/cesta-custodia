@@ -78,7 +78,12 @@ export const produtos = pgTable('produtos', {
 export const pedidos = pgTable('pedidos', {
   id: uuid('id').defaultRandom().primaryKey(),
   compradorId: uuid('comprador_id').notNull().references(() => compradores.id),
-  internoId: uuid('interno_id').notNull().references(() => internos.id),
+  internoId: uuid('interno_id').references(() => internos.id),
+  internoNome: text('interno_nome'),
+  internoMatricula: text('interno_matricula'),
+  internoAla: text('interno_ala'),
+  internoCela: text('interno_cela'),
+  unidadePrisionalNome: text('unidade_prisional_nome'),
   status: statusPedidoEnum('status').notNull().default('PENDENTE_SIPEN'),
   protocoloSipen: text('protocolo_sipen'),
   valorTotal: decimal('valor_total', { precision: 10, scale: 2 }).notNull().default('0'),

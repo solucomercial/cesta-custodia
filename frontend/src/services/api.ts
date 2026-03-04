@@ -73,17 +73,6 @@ export type VerifyEmailPayload = {
   code: string
 }
 
-export type ValidateSipenPayload = {
-  buyer_cpf: string
-  inmate: {
-    name: string
-    ward: string
-    cell: string
-    prison_unit_id?: string
-    prison_unit_name?: string
-  }
-}
-
 export type CepResponse = {
   zip_code: string
   street: string
@@ -194,13 +183,6 @@ export function confirmEmailVerification(payload: VerifyEmailPayload) {
 
 export function getMe() {
   return request<{ user: any; buyer: any | null }>('/auth/me')
-}
-
-export function validateSipen(payload: ValidateSipenPayload) {
-  return request<{ status: 'APROVADO'; protocol: string; inmate_id: string }>('/sipen/validate', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
 }
 
 export function updateOrderStatus(id: string, status: string) {

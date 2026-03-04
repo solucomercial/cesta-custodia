@@ -114,7 +114,7 @@ export interface Product {
 export interface Order {
   id: string
   buyer_id: string
-  inmate_id: string
+  inmate_id: string | null
   status: OrderStatus
   sipen_protocol: string | null
   total_value: number
