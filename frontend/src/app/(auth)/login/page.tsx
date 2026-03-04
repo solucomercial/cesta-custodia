@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { requestMagicLink } from '@/services/api'
 import { toast } from 'sonner'
 
 const digitsOnly = (value: string) => value.replace(/\D/g, '')
@@ -54,16 +55,7 @@ export default function LoginPage() {
     setSubmitting(true)
     setSuccessMessage('')
     try {
-      const res = await fetch('/api/auth/magic-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.error || 'Erro ao solicitar magic link')
-      }
+      await requestMagicLink(payload)
 
       setSuccessMessage('Link enviado para o email cadastrado. Verifique sua caixa de entrada.')
       toast.success('Link enviado com sucesso')

@@ -1,12 +1,14 @@
 {
-  "name": "api",
+  "name": "seap-api",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch --env-file=.env src/server.ts",
     "start": "node dist/server.js",
-    "format": "biome format --write"
+    "format": "biome format --write",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push"
   },
   "keywords": [],
   "author": "",
@@ -14,15 +16,24 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.5",
     "@types/node": "^25.3.3",
+    "drizzle-kit": "0.18.1",
+    "dotenv": "^17.3.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
+  "overrides": {
+    "esbuild": "^0.25.12"
+  },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
+    "@fastify/cookie": "^11.0.2",
     "@fastify/swagger": "^9.7.0",
     "@scalar/fastify-api-reference": "^1.46.4",
+    "drizzle-orm": "^0.44.6",
     "fastify": "^5.7.4",
     "fastify-type-provider-zod": "^6.1.0",
+    "nodemailer": "^8.0.1",
+    "postgres": "^3.4.7",
     "zod": "^4.3.6"
   }
 }
