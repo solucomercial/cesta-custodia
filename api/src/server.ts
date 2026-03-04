@@ -7,9 +7,14 @@ import {
 } from 'fastify-type-provider-zod'
 import { fastifySwagger } from '@fastify/swagger'
 import { fastifyCors } from '@fastify/cors'
+import { fastifyCookie } from '@fastify/cookie'
 import ScalarApiReference from '@scalar/fastify-api-reference'
 import { authLoginRoute } from '@/routes/auth/login'
 import { authMagicLinkRoute } from '@/routes/auth/magic-link'
+import { getProductsRoute } from '@/routes/products/get-products'
+import { searchInmateRoute } from '@/routes/inmates/search-inmate'
+import { ordersRoute } from '@/routes/orders/orders'
+import { getPrisonUnitsRoute } from '@/routes/prison-units/get-prison-units'
 
 
 const app = fastify().withTypeProvider<ZodTypeProvider>()
@@ -22,6 +27,8 @@ app.register(fastifyCors, {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
 })
+
+app.register(fastifyCookie)
 
 app.register(fastifySwagger, {
   openapi: {
@@ -40,6 +47,10 @@ app.register(ScalarApiReference, {
 
 app.register(authLoginRoute)
 app.register(authMagicLinkRoute)
+app.register(getProductsRoute)
+app.register(searchInmateRoute)
+app.register(ordersRoute)
+app.register(getPrisonUnitsRoute)
 
 app.listen({ port: 3333, host: '0.0.0.0'}).then(() => {
   console.log('HTTP server running on http://localhost:3333')

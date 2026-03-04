@@ -12,6 +12,7 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
+    credentials: 'include',
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -64,6 +65,31 @@ export type MagicLinkRequest = {
 
 export function requestMagicLink(payload: MagicLinkRequest) {
   return request<{ ok: true }>('/auth/magic-link', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function getProducts(category?: string, unitId?: string) {
+  const params = new URLSearchParams()
+  if (category) params.append('category', category)
+  if (unitId) params.append('unit_id', unitId)
+
+  const queryString = params.toString()
+  return request<any[]>(`/products${queryString ? `?${queryString}` : ''}`)
+}
+
+export function getPrisonUnits() {
+  return request<any[]>('/prison-units')
+}
+
+export function searchInmate(registration: string) {
+  const params = new URLSearchParams({ registration })
+  return request<any>(`/inmates/search?${params.toString()}`)
+}
+
+export function createOrder(payload: any) {
+  return request<{ id: string; sipen_protocol: string }>('/orders', {
     method: 'POST',
     body: JSON.stringify(payload),
   })

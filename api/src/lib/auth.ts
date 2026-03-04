@@ -1,3 +1,5 @@
+import type { FastifyRequest } from 'fastify'
+
 const DEFAULT_TOKEN_TTL_SECONDS = 60 * 60 * 8
 
 export const AUTH_TOKEN_TTL_SECONDS = Number(
@@ -35,6 +37,19 @@ function base64UrlEncodeJson(payload: unknown) {
   return base64UrlEncode(textEncoder.encode(JSON.stringify(payload)))
 }
 
+function base64UrlDecode(input: string) {
+  const normalized = input.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4)
+
+  return new Uint8Array(Buffer.from(padded, 'base64'))
+}
+
+function base64UrlDecodeJson<T>(payload: string) {
+  const data = base64UrlDecode(payload)
+  const json = Buffer.from(data).toString('utf8')
+  return JSON.parse(json) as T
+}
+
 async function signHmac(message: string, secret: string) {
   const key = await crypto.subtle.importKey(
     'raw',
@@ -51,6 +66,23 @@ async function signHmac(message: string, secret: string) {
   )
 
   return base64UrlEncode(new Uint8Array(signature))
+}
+
+async function verifyHmac(message: string, signature: string, secret: string) {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    textEncoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['verify'],
+  )
+
+  return crypto.subtle.verify(
+    'HMAC',
+    key,
+    base64UrlDecode(signature),
+    textEncoder.encode(message),
+  )
 }
 
 export async function createAuthToken(payload: {
@@ -73,4 +105,54 @@ export async function createAuthToken(payload: {
   const signature = await signHmac(message, getSecret())
 
   return `${message}.${signature}`
+}
+
+export async function verifyAuthToken(token: string) {
+  const parts = token.split('.')
+  if (parts.length !== 3) return null
+
+  const [header, payload, signature] = parts
+  if (!header || !payload || !signature) return null
+
+  const isValid = await verifyHmac(`${header}.${payload}`, signature, getSecret())
+  if (!isValid) return null
+
+  const data = base64UrlDecodeJson<AuthTokenPayload>(payload)
+  if (!data?.exp || data.exp < Math.floor(Date.now() / 1000)) {
+    return null
+  }
+
+  return data
+}
+
+export function getAuthTokenFromCookieHeader(cookieHeader: string | null) {
+  if (!cookieHeader) return null
+
+  const parts = cookieHeader.split(';')
+  for (const part of parts) {
+    const [key, ...rest] = part.trim().split('=')
+    if (key === 'auth_token') {
+      return decodeURIComponent(rest.join('='))
+    }
+  }
+
+  return null
+}
+
+function getBearerTokenFromHeader(authorizationHeader: string | undefined) {
+  if (!authorizationHeader) return null
+
+  const [scheme, token] = authorizationHeader.split(' ')
+  if (scheme?.toLowerCase() !== 'bearer' || !token) return null
+
+  return token
+}
+
+export async function getAuthSessionFromFastifyRequest(request: FastifyRequest) {
+  const cookieToken = request.cookies?.auth_token
+  const headerToken = getBearerTokenFromHeader(request.headers.authorization)
+  const token = cookieToken ?? headerToken ?? getAuthTokenFromCookieHeader(request.headers.cookie ?? null)
+
+  if (!token) return null
+  return verifyAuthToken(token)
 }

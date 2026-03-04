@@ -1,12 +1,22 @@
-import { sql } from '@/lib/db'
 import { NextResponse } from 'next/server'
 
-export async function GET() {
-  const units = await sql`
-    SELECT id, nome as name, grupo_unidade as unit_group, endereco as address
-    FROM unidades_prisionais
-    ORDER BY nome
-  `
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'
 
-  return NextResponse.json(units)
+export async function GET() {
+  const response = await fetch(`${API_BASE_URL}/prison-units`, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+  })
+
+  const body = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    const message = body && typeof body === 'object' && 'error' in body
+      ? String(body.error)
+      : 'Erro ao buscar unidades prisionais'
+    return NextResponse.json({ error: message }, { status: response.status })
+  }
+
+  return NextResponse.json(body)
 }

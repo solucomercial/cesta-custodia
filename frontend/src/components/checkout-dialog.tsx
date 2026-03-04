@@ -18,6 +18,7 @@ import {
 import { useCart } from '@/lib/cart-store'
 import { formatCurrency } from '@/lib/types'
 import type { BuyerProfile, CheckoutInmateInput } from '@/lib/types'
+import { createOrder } from '@/services/api'
 import { toast } from 'sonner'
 
 export function CheckoutDialog({
@@ -133,31 +134,21 @@ export function CheckoutDialog({
 
     setSubmitting(true)
     try {
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          inmate: inmateInput,
-          sipen_protocol: sipenProtocol,
-          payment_method: paymentMethod,
-          prescription_url: prescriptionUrl || null,
-          prescription_code: prescriptionCode || null,
-          items: items.map((item) => ({
-            product_id: item.product.id,
-            price: Number(item.product.price),
-            quantity: item.quantity,
-            category: item.product.category,
-            name: item.product.name,
-          })),
-        }),
+      const data = await createOrder({
+        inmate: inmateInput,
+        sipen_protocol: sipenProtocol,
+        payment_method: paymentMethod,
+        prescription_url: prescriptionUrl || null,
+        prescription_code: prescriptionCode || null,
+        items: items.map((item) => ({
+          product_id: item.product.id,
+          price: Number(item.product.price),
+          quantity: item.quantity,
+          category: item.product.category,
+          name: item.product.name,
+        })),
       })
 
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Erro ao criar pedido')
-      }
-
-      const data = await res.json()
       setSipenProtocol(data.sipen_protocol)
       setStep('success')
       clearCart()
