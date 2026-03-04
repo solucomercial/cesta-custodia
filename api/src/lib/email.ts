@@ -1,6 +1,46 @@
 import nodemailer from 'nodemailer'
 
+// Configurações de estilo e assets
+const COLORS = {
+  primary: '#0b4ea2',
+  background: '#f4f7fa',
+  text: '#2d3748',
+  muted: '#718096',
+  white: '#ffffff',
+  accent: '#e6ebf2'
+}
+
+// URL da logo (idealmente vinda de variável de ambiente)
+const LOGO_URL = process.env.NEXT_PUBLIC_API_URL 
+  ? `${process.env.NEXT_PUBLIC_API_URL}/logo-horizontal.png` 
+  : 'https://solucoesterceirizadas.com.br/images/logo-footer.png'
+
 const DEFAULT_PORT = 587
+
+/**
+ * Gera o invólucro HTML padrão para todos os e-mails do sistema
+ */
+function getBaseTemplate(content: string) {
+  return `
+    <div style="background-color: ${COLORS.background}; padding: 40px 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: ${COLORS.text}; margin: 0;">
+      <div style="max-width: 600px; margin: 0 auto;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <img src="${LOGO_URL}" alt="Soluções Serviços Terceirizados" style="height: 60px; width: auto;">
+        </div>
+        
+        <div style="background-color: ${COLORS.white}; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(11, 78, 162, 0.08); border: 1px solid ${COLORS.accent};">
+          ${content}
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px; color: ${COLORS.muted}; font-size: 12px; line-height: 1.6;">
+          <p style="margin: 0;"><strong>Soluções Serviços Terceirizados LTDA</strong></p>
+          <p style="margin: 0;">CNPJ: 09.445.502/0001-09</p>
+          <p style="margin: 10px 0 0 0;">Este é um e-mail transacional automático.<br>Por favor, não responda a este remetente.</p>
+        </div>
+      </div>
+    </div>
+  `
+}
 
 function getSmtpConfig() {
   const host = process.env.SMTP_HOST
@@ -52,17 +92,26 @@ export async function sendMagicLinkEmail(params: {
   const { from } = getSmtpConfig()
   const transporter = getTransporter()
 
+  const content = `
+    <h2 style="color: ${COLORS.primary}; margin-top: 0;">Olá,</h2>
+    <p>Use o link abaixo para entrar no sistema <strong>Cesta de Custódia</strong>:</p>
+    <div style="margin: 30px 0; text-align: center;">
+      <a href="${params.link}" style="background-color: ${COLORS.primary}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+        Acessar Sistema
+      </a>
+    </div>
+    <p style="font-size: 14px; color: ${COLORS.muted};">Ou copie e cole o link no seu navegador:</p>
+    <p style="word-break: break-all; font-size: 12px;"><a href="${params.link}">${params.link}</a></p>
+    <hr style="border: 0; border-top: 1px solid ${COLORS.accent}; margin: 20px 0;">
+    <p style="font-size: 12px; color: ${COLORS.muted}; text-align: center;">Este link expira em ${params.expiresAt.toLocaleString('pt-BR')}.</p>
+  `
+
   await transporter.sendMail({
     from,
     to: params.to,
-    subject: 'Link de Acesso - Cesta de Custodia',
-    text: `Acesse o sistema atraves do link: ${params.link}`,
-    html: `
-      <p>Ola,</p>
-      <p>Use o link abaixo para entrar no sistema:</p>
-      <p><a href="${params.link}">${params.link}</a></p>
-      <p>Este link expira em ${params.expiresAt.toISOString()}.</p>
-    `,
+    subject: 'Link de Acesso - Cesta de Custódia',
+    text: `Acesse o sistema através do link: ${params.link}`,
+    html: getBaseTemplate(content),
   })
 }
 
@@ -73,16 +122,21 @@ export async function sendVerificationEmail(params: {
   const { from } = getSmtpConfig()
   const transporter = getTransporter()
 
+  const content = `
+    <h2 style="color: ${COLORS.primary}; margin-top: 0;">Olá,</h2>
+    <p>Seu código de verificação para a <strong>Cesta de Custódia</strong> é:</p>
+    <div style="margin: 30px 0; text-align: center; background-color: ${COLORS.background}; padding: 20px; border-radius: 8px; border: 1px dashed ${COLORS.primary};">
+      <strong style="font-size: 32px; letter-spacing: 8px; color: ${COLORS.primary};">${params.code}</strong>
+    </div>
+    <p>Insira este código na tela de verificação para continuar o seu cadastro.</p>
+    <p style="font-size: 14px; color: ${COLORS.muted};">Se você não solicitou este código, por favor ignore este e-mail.</p>
+  `
+
   await transporter.sendMail({
     from,
     to: params.to,
-    subject: 'Codigo de Verificacao - Cesta de Custodia',
-    text: `Seu codigo de verificacao: ${params.code}`,
-    html: `
-      <p>Ola,</p>
-      <p>Seu codigo de verificacao e:</p>
-      <p><strong style="font-size: 24px; letter-spacing: 4px;">${params.code}</strong></p>
-      <p>Se voce nao solicitou este codigo, ignore este email.</p>
-    `,
+    subject: 'Código de Verificação - Cesta de Custódia',
+    text: `Seu código de verificação é: ${params.code}`,
+    html: getBaseTemplate(content),
   })
 }

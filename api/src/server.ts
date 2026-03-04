@@ -23,6 +23,7 @@ import { getPrisonUnitsRoute } from '@/routes/prison-units/get-prison-units'
 import { adminAuditRoute } from '@/routes/admin/audit'
 import { adminStatsRoute } from '@/routes/admin/stats'
 import { sipenValidateRoute } from '@/routes/sipen/validate'
+import { getCepRoute } from '@/routes/cep/get-cep'
 
 
 const app = fastify().withTypeProvider<ZodTypeProvider>()
@@ -67,6 +68,7 @@ app.register(getPrisonUnitsRoute)
 app.register(adminAuditRoute)
 app.register(adminStatsRoute)
 app.register(sipenValidateRoute)
+app.register(getCepRoute)
 
 app.listen({ port: 3333, host: '0.0.0.0'}).then(() => {
   console.log('HTTP server running on http://localhost:3333')

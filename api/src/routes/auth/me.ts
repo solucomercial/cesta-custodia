@@ -1,6 +1,6 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { z } from 'zod'
-import { getAuthSessionFromFastifyRequest } from '@/lib/auth'
+import { clearAuthCookie, getAuthSessionFromFastifyRequest } from '@/lib/auth'
 import { sql } from '@/lib/db'
 
 export const authMeRoute: FastifyPluginAsyncZod = async (app) => {
@@ -19,6 +19,7 @@ export const authMeRoute: FastifyPluginAsyncZod = async (app) => {
     async (request, reply) => {
       const session = await getAuthSessionFromFastifyRequest(request)
       if (!session) {
+        clearAuthCookie(reply)
         return reply.code(401).send({ error: 'Nao autenticado' })
       }
 

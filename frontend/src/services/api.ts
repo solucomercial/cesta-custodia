@@ -22,6 +22,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   const body = await response.json().catch(() => null)
 
+  if (response.status === 401) {
+    const authEndpoints = ['/auth/login', '/auth/register', '/auth/magic-link']
+    const isAuthRequest = authEndpoints.some((endpoint) => path.startsWith(endpoint))
+
+    if (!isAuthRequest && typeof window !== 'undefined') {
+      const { pathname } = window.location
+      const isOnAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/verify')
+
+      if (!isOnAuthPage) {
+        window.location.assign('/login')
+      }
+    }
+  }
+
   if (!response.ok) {
     const message = body && typeof body === 'object' && 'error' in body
       ? String(body.error)
@@ -66,6 +80,15 @@ export type ValidateSipenPayload = {
     prison_unit_id?: string
     prison_unit_name?: string
   }
+}
+
+export type CepResponse = {
+  zip_code: string
+  street: string
+  complement: string
+  neighborhood: string
+  city: string
+  state: string
 }
 
 export type LoginRequest = {
@@ -116,6 +139,11 @@ export function getProducts(category?: string, unitId?: string) {
 
 export function getPrisonUnits() {
   return request<any[]>('/prison-units')
+}
+
+export function getAddressByCep(cep: string) {
+  const cleanCep = cep.replace(/\D/g, '')
+  return request<CepResponse>(`/cep/${cleanCep}`)
 }
 
 export function searchInmate(registration: string) {

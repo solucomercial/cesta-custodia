@@ -1,4 +1,4 @@
-import type { FastifyRequest } from 'fastify'
+import type { FastifyReply, FastifyRequest } from 'fastify'
 
 const DEFAULT_TOKEN_TTL_SECONDS = 60 * 60 * 8
 export const AUTH_COOKIE_NAME = 'auth_token'
@@ -156,4 +156,13 @@ export async function getAuthSessionFromFastifyRequest(request: FastifyRequest) 
 
   if (!token) return null
   return verifyAuthToken(token)
+}
+
+export function clearAuthCookie(reply: FastifyReply) {
+  reply.clearCookie(AUTH_COOKIE_NAME, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+  })
 }

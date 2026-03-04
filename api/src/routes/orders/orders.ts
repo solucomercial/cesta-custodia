@@ -1,7 +1,7 @@
 import type { FastifyRequest } from 'fastify'
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { z } from 'zod'
-import { getAuthSessionFromFastifyRequest } from '@/lib/auth'
+import { clearAuthCookie, getAuthSessionFromFastifyRequest } from '@/lib/auth'
 import { sql } from '@/lib/db'
 import { calcularFrete, calcularFuespTax, LIMITE_SEMANAL_POR_INTERNO } from '@/lib/fees'
 import { validateCfmPrescription } from '@/lib/prescription-validator'
@@ -57,6 +57,7 @@ export const ordersRoute: FastifyPluginAsyncZod = async (app) => {
   app.addHook('preHandler', async (request, reply) => {
     const session = await getAuthSessionFromFastifyRequest(request)
     if (!session) {
+      clearAuthCookie(reply)
       return reply.code(401).send({ error: 'Nao autenticado' })
     }
 
