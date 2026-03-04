@@ -35,6 +35,7 @@ app.register(fastifyCors, {
   origin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
+  maxAge: 28800, // 8 hours
 })
 
 app.register(fastifyCookie)

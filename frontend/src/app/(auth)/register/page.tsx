@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { registerSchema, type RegisterInput } from '@/lib/validations/register'
-import { register } from '@/services/api'
+import { ApiError, getAddressByCep, register } from '@/services/api'
 
 const INITIAL_FORM: RegisterInput = {
   name: '',
@@ -92,35 +92,114 @@ const formatPhone = (value: string) => {
   return `(${area}) ${rest.slice(0, 5)}-${rest.slice(5)}`
 }
 
+const getInputValue = (event: React.ChangeEvent<HTMLInputElement>) =>
+  (event.currentTarget as { value?: string } | null)?.value ?? ''
+
 export default function RegisterPage() {
   const router = useRouter()
   const [form, setForm] = useState<RegisterInput>(INITIAL_FORM)
   const [submitting, setSubmitting] = useState(false)
+  const [addressUnlocked, setAddressUnlocked] = useState(false)
+  const submitLock = useRef(false)
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const requiresOab = form.professional_type === 'ADVOGADO'
   const requiresConsular = form.professional_type === 'AGENTE_CONSULAR'
 
+  useEffect(() => {
+    const cepLimpo = form.address_zip_code.replace(/\D/g, '')
+
+    if (cepLimpo.length !== 8) {
+      setAddressUnlocked(false)
+      return
+    }
+
+    const handleCepLookup = async () => {
+      try {
+        const data = await getAddressByCep(cepLimpo)
+
+        setForm((prev) => ({
+          ...prev,
+          address_street: data.street,
+          address_neighborhood: data.neighborhood,
+          address_city: data.city,
+          address_state: data.state,
+        }))
+
+        setAddressUnlocked(true)
+
+        toast.success('Endereco preenchido automaticamente')
+      } catch (error) {
+        setAddressUnlocked(false)
+        toast.error('CEP nao encontrado, digite um CEP valido')
+      }
+    }
+
+    handleCepLookup()
+  }, [form.address_zip_code])
+
+  useEffect(() => {
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current)
+      }
+    }
+  }, [])
+
   async function handleSubmit() {
+    if (submitLock.current) {
+      return
+    }
+
+    submitLock.current = true
     const result = registerSchema.safeParse(form)
 
     if (!result.success) {
       toast.error(result.error.issues[0]?.message || 'Dados invalidos')
+      submitLock.current = false
       return
     }
 
     setSubmitting(true)
-    try {
-      await register(result.data)
 
-      const email = result.data.email.trim()
-      toast.success('Cadastro enviado. Verifique seu email para validar o acesso.')
-      router.push(`/verify?email=${encodeURIComponent(email)}`)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Erro ao cadastrar'
-      toast.error(message)
-    } finally {
-      setSubmitting(false)
+    const attemptRegister = async (allowRetry: boolean) => {
+      try {
+        await register(result.data)
+
+        const email = result.data.email.trim()
+        toast.success('Cadastro enviado. Verifique seu email para validar o acesso.')
+        router.push(`/verify?email=${encodeURIComponent(email)}`)
+        setSubmitting(false)
+        submitLock.current = false
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 429) {
+          const retryAfterSeconds =
+            typeof error.data === 'object'
+            && error.data !== null
+            && 'retryAfterSeconds' in error.data
+              ? Number((error.data as { retryAfterSeconds?: number }).retryAfterSeconds)
+              : 0
+
+          if (allowRetry && retryAfterSeconds > 0) {
+            toast.error(`Muitas tentativas. Tentando novamente em ${retryAfterSeconds}s.`)
+            if (retryTimeoutRef.current) {
+              clearTimeout(retryTimeoutRef.current)
+            }
+            retryTimeoutRef.current = setTimeout(() => {
+              attemptRegister(false)
+            }, retryAfterSeconds * 1000)
+            return
+          }
+        }
+
+        const message = error instanceof Error ? error.message : 'Erro ao cadastrar'
+        toast.error(message)
+        setSubmitting(false)
+        submitLock.current = false
+      }
     }
+
+    attemptRegister(true)
   }
 
   return (
@@ -140,7 +219,9 @@ export default function RegisterPage() {
               <Label>Nome completo</Label>
               <Input
                 value={form.name}
-                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, name: getInputValue(e) }))
+                }
                 placeholder="Seu nome completo"
               />
             </div>
@@ -149,7 +230,9 @@ export default function RegisterPage() {
               <Input
                 type="email"
                 value={form.email}
-                onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, email: getInputValue(e) }))
+                }
                 placeholder="seu@email.com"
               />
             </div>
@@ -157,7 +240,12 @@ export default function RegisterPage() {
               <Label>CPF</Label>
               <Input
                 value={form.cpf}
-                onChange={(e) => setForm((prev) => ({ ...prev, cpf: formatCpf(e.target.value) }))}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    cpf: formatCpf(getInputValue(e)),
+                  }))
+                }
                 placeholder="000.000.000-00"
                 inputMode="numeric"
               />
@@ -166,7 +254,12 @@ export default function RegisterPage() {
               <Label>RG</Label>
               <Input
                 value={form.rg}
-                onChange={(e) => setForm((prev) => ({ ...prev, rg: formatRg(e.target.value) }))}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    rg: formatRg(getInputValue(e)),
+                  }))
+                }
                 placeholder="00.000.000-0"
                 inputMode="numeric"
               />
@@ -176,14 +269,21 @@ export default function RegisterPage() {
               <Input
                 type="date"
                 value={form.birth_date}
-                onChange={(e) => setForm((prev) => ({ ...prev, birth_date: e.target.value }))}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, birth_date: getInputValue(e) }))
+                }
               />
             </div>
             <div className="space-y-1.5">
               <Label>Telefone</Label>
               <Input
                 value={form.phone}
-                onChange={(e) => setForm((prev) => ({ ...prev, phone: formatPhone(e.target.value) }))}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    phone: formatPhone(getInputValue(e)),
+                  }))
+                }
                 placeholder="(00) 00000-0000"
                 inputMode="numeric"
               />
@@ -195,38 +295,77 @@ export default function RegisterPage() {
             <div className="grid gap-3 md:grid-cols-3">
               <Input
                 value={form.address_street}
-                onChange={(e) => setForm((prev) => ({ ...prev, address_street: e.target.value }))}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    address_street: getInputValue(e),
+                  }))
+                }
                 placeholder="Rua"
                 className="md:col-span-2"
+                disabled={!addressUnlocked}
               />
               <Input
                 value={form.address_number}
-                onChange={(e) => setForm((prev) => ({ ...prev, address_number: e.target.value }))}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    address_number: getInputValue(e),
+                  }))
+                }
                 placeholder="Numero"
               />
               <Input
                 value={form.address_complement}
-                onChange={(e) => setForm((prev) => ({ ...prev, address_complement: e.target.value }))}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    address_complement: getInputValue(e),
+                  }))
+                }
                 placeholder="Complemento"
               />
               <Input
                 value={form.address_neighborhood}
-                onChange={(e) => setForm((prev) => ({ ...prev, address_neighborhood: e.target.value }))}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    address_neighborhood: getInputValue(e),
+                  }))
+                }
                 placeholder="Bairro"
+                disabled={!addressUnlocked}
               />
               <Input
                 value={form.address_city}
-                onChange={(e) => setForm((prev) => ({ ...prev, address_city: e.target.value }))}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    address_city: getInputValue(e),
+                  }))
+                }
                 placeholder="Cidade"
+                disabled={!addressUnlocked}
               />
               <Input
                 value={form.address_state}
-                onChange={(e) => setForm((prev) => ({ ...prev, address_state: e.target.value }))}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    address_state: getInputValue(e),
+                  }))
+                }
                 placeholder="UF"
+                disabled={!addressUnlocked}
               />
               <Input
                 value={form.address_zip_code}
-                onChange={(e) => setForm((prev) => ({ ...prev, address_zip_code: formatCep(e.target.value) }))}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    address_zip_code: formatCep(getInputValue(e)),
+                  }))
+                }
                 placeholder="00000-000"
                 inputMode="numeric"
               />
@@ -260,7 +399,9 @@ export default function RegisterPage() {
                 <Label>Inscricao OAB</Label>
                 <Input
                   value={form.oab_number}
-                  onChange={(e) => setForm((prev) => ({ ...prev, oab_number: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, oab_number: getInputValue(e) }))
+                  }
                   placeholder="OAB/UF 000000"
                 />
               </div>
@@ -270,7 +411,12 @@ export default function RegisterPage() {
                 <Label>Matricula consular</Label>
                 <Input
                   value={form.consular_registration}
-                  onChange={(e) => setForm((prev) => ({ ...prev, consular_registration: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      consular_registration: getInputValue(e),
+                    }))
+                  }
                   placeholder="Matricula consular"
                 />
               </div>

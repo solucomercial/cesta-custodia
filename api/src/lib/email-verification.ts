@@ -4,6 +4,7 @@ import { sql } from '@/lib/db'
 const CODE_LENGTH = 6
 const DEFAULT_TTL_MINUTES = 10
 const DEFAULT_RESEND_SECONDS = 60
+const DEFAULT_RESEND_SECONDS_DEV = 2
 const DEFAULT_MAX_ATTEMPTS = 5
 
 class CooldownError extends Error {
@@ -49,7 +50,11 @@ export async function createEmailVerification(email: string, executor: Executor 
     throw new Error('Email obrigatorio')
   }
 
-  const resendSeconds = Number(process.env.EMAIL_VERIFICATION_RESEND_SECONDS ?? DEFAULT_RESEND_SECONDS)
+  const isDev = process.env.NODE_ENV !== 'production'
+  const resendSeconds = Number(
+    process.env.EMAIL_VERIFICATION_RESEND_SECONDS
+      ?? (isDev ? DEFAULT_RESEND_SECONDS_DEV : DEFAULT_RESEND_SECONDS),
+  )
   const [latest] = (await executor`
     SELECT criado_em
     FROM verificacoes_email

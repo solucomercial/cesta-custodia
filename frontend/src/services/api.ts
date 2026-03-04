@@ -2,11 +2,13 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'
 
 export class ApiError extends Error {
   status: number
+  data: unknown
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, data?: unknown) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.data = data
   }
 }
 
@@ -41,7 +43,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ? String(body.error)
       : 'Erro ao comunicar com a API'
 
-    throw new ApiError(message, response.status)
+    throw new ApiError(message, response.status, body)
   }
 
   return body as T

@@ -64,7 +64,7 @@ export const getCepRoute: FastifyPluginAsyncZod = async (app) => {
       if (openCep) return openCep
 
       return reply.status(404).send({
-        error: 'CEP nao encontrado ou servicos indisponiveis',
+        error: 'CEP não encontrado em nenhuma fonte',
       })
     },
   )
