@@ -51,7 +51,25 @@ export const searchInmateRoute: FastifyPluginAsyncZod = async (app) => {
         return reply.code(404).send({ error: 'Interno nao encontrado' })
       }
 
-      return inmates[0]
+      const inmate = inmates[0] as {
+        id: string
+        name: string
+        registration: string
+        ward: string
+        cell: string
+        prison_unit_id: string
+        prison_unit_name: string
+      }
+
+      return {
+        id: inmate.id,
+        name: inmate.name,
+        registration: inmate.registration,
+        ward: inmate.ward,
+        cell: inmate.cell,
+        prison_unit_id: inmate.prison_unit_id,
+        prison_unit_name: inmate.prison_unit_name,
+      }
     },
   )
 }

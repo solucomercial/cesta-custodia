@@ -33,6 +33,41 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T
 }
 
+export type RegisterPayload = {
+  name: string
+  email: string
+  cpf: string
+  rg: string
+  birth_date: string
+  phone: string
+  address_street: string
+  address_number: string
+  address_complement?: string
+  address_neighborhood: string
+  address_city: string
+  address_state: string
+  address_zip_code: string
+  professional_type: 'ADVOGADO' | 'AGENTE_CONSULAR' | 'OUTRO'
+  oab_number?: string
+  consular_registration?: string
+}
+
+export type VerifyEmailPayload = {
+  email: string
+  code: string
+}
+
+export type ValidateSipenPayload = {
+  buyer_cpf: string
+  inmate: {
+    name: string
+    ward: string
+    cell: string
+    prison_unit_id?: string
+    prison_unit_name?: string
+  }
+}
+
 export type LoginRequest = {
   email?: string
   identifier?: string
@@ -93,4 +128,62 @@ export function createOrder(payload: any) {
     method: 'POST',
     body: JSON.stringify(payload),
   })
+}
+
+export function register(payload: RegisterPayload) {
+  return request<{
+    ok: true
+    user_id: string
+    expiresAt: string
+    resendAfterSeconds: number
+    ttlSeconds: number
+  }>('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function resendEmailVerification(email: string) {
+  return request<{
+    ok: true
+    expiresAt: string
+    resendAfterSeconds: number
+    ttlSeconds: number
+  }>('/auth/verification/email/resend', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export function confirmEmailVerification(payload: VerifyEmailPayload) {
+  return request<{ ok: true }>('/auth/verification/email/confirm', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function getMe() {
+  return request<{ user: any; buyer: any | null }>('/auth/me')
+}
+
+export function validateSipen(payload: ValidateSipenPayload) {
+  return request<{ status: 'APROVADO'; protocol: string; inmate_id: string }>('/sipen/validate', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function updateOrderStatus(id: string, status: string) {
+  return request<{ success: true }>(`/orders/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
+}
+
+export function getAdminStats() {
+  return request<any>('/admin/stats')
+}
+
+export function getAuditLogs() {
+  return request<any[]>('/admin/audit')
 }

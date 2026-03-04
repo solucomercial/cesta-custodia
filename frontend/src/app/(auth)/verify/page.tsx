@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
@@ -13,8 +13,17 @@ import {
   InputOTPSlot,
 } from '@/components/ui/input-otp'
 import { toast } from 'sonner'
+import { confirmEmailVerification, resendEmailVerification } from '@/services/api'
 
 export default function VerifyPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-muted/50 px-4" />}>
+      <VerifyPageContent />
+    </Suspense>
+  )
+}
+
+function VerifyPageContent() {
   const router = useRouter()
   const params = useSearchParams()
   const [email, setEmail] = useState(params.get('email') ?? '')
@@ -49,16 +58,7 @@ export default function VerifyPage() {
 
     setSubmitting(true)
     try {
-      const res = await fetch('/api/auth/verification/email/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), code: code.trim() }),
-      })
-
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.error || 'Erro ao validar codigo')
-      }
+      await confirmEmailVerification({ email: email.trim(), code: code.trim() })
 
       toast.success('Email verificado com sucesso!')
       router.push('/catalogo')
@@ -78,20 +78,7 @@ export default function VerifyPage() {
 
     setResending(true)
     try {
-      const res = await fetch('/api/auth/verification/email/resend', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
-      })
-
-      const data = await res.json()
-      if (!res.ok) {
-        if (res.status === 429 && data.retryAfterSeconds) {
-          setResendAvailableAt(new Date(Date.now() + data.retryAfterSeconds * 1000))
-        }
-        throw new Error(data.error || 'Erro ao reenviar codigo')
-      }
-
+      const data = await resendEmailVerification(email.trim())
       setResendAvailableAt(new Date(Date.now() + Number(data.resendAfterSeconds ?? 60) * 1000))
       toast.success('Codigo reenviado')
     } catch (error) {

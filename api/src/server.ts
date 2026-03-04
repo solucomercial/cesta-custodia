@@ -11,10 +11,18 @@ import { fastifyCookie } from '@fastify/cookie'
 import ScalarApiReference from '@scalar/fastify-api-reference'
 import { authLoginRoute } from '@/routes/auth/login'
 import { authMagicLinkRoute } from '@/routes/auth/magic-link'
+import { authRegisterRoute } from '@/routes/auth/register'
+import { authVerificationEmailRoute } from '@/routes/auth/verification-email'
+import { authMeRoute } from '@/routes/auth/me'
+import { authCallbackRoute } from '@/routes/auth/callback'
 import { getProductsRoute } from '@/routes/products/get-products'
 import { searchInmateRoute } from '@/routes/inmates/search-inmate'
 import { ordersRoute } from '@/routes/orders/orders'
+import { updateOrderStatusRoute } from '@/routes/orders/update-order-status'
 import { getPrisonUnitsRoute } from '@/routes/prison-units/get-prison-units'
+import { adminAuditRoute } from '@/routes/admin/audit'
+import { adminStatsRoute } from '@/routes/admin/stats'
+import { sipenValidateRoute } from '@/routes/sipen/validate'
 
 
 const app = fastify().withTypeProvider<ZodTypeProvider>()
@@ -47,10 +55,18 @@ app.register(ScalarApiReference, {
 
 app.register(authLoginRoute)
 app.register(authMagicLinkRoute)
+app.register(authRegisterRoute)
+app.register(authVerificationEmailRoute)
+app.register(authMeRoute)
+app.register(authCallbackRoute)
 app.register(getProductsRoute)
 app.register(searchInmateRoute)
 app.register(ordersRoute)
+app.register(updateOrderStatusRoute)
 app.register(getPrisonUnitsRoute)
+app.register(adminAuditRoute)
+app.register(adminStatsRoute)
+app.register(sipenValidateRoute)
 
 app.listen({ port: 3333, host: '0.0.0.0'}).then(() => {
   console.log('HTTP server running on http://localhost:3333')

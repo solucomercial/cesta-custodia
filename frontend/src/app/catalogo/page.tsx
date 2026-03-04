@@ -17,7 +17,7 @@ import { ProductCard } from '@/components/product-card'
 import { CartSidebar } from '@/components/cart-sidebar'
 import { CheckoutDialog } from '@/components/checkout-dialog'
 import type { BuyerProfile, Product, PrisonUnit } from '@/lib/types'
-import { getPrisonUnits, getProducts } from '@/services/api'
+import { getMe, getPrisonUnits, getProducts } from '@/services/api'
 
 const CATEGORIES: { value: string; label: string }[] = [
   { value: 'ALL', label: 'Todos' },
@@ -33,7 +33,7 @@ export default function CatalogoPage() {
   const [cartOpen, setCartOpen] = useState(false)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
 
-  const { data: session } = useSWR<{ buyer: BuyerProfile | null }>('/api/auth/session')
+  const { data: session } = useSWR<{ buyer: BuyerProfile | null }>(['auth/me'], () => getMe())
   const { data: units } = useSWR<PrisonUnit[]>(['prison-units'], () => getPrisonUnits())
   const { data: products, isLoading } = useSWR<Product[]>(
     ['products', category, unitId],

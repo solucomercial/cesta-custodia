@@ -1,17 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { AUTH_COOKIE_NAME, verifyAuthToken } from '@/lib/auth'
+import { AUTH_COOKIE_NAME } from '@/lib/auth'
 
 // Define rotas públicas que não precisam de autenticação
-const PUBLIC_ROUTES = [
-  '/api/auth/login',
-  '/api/auth/magic-link',
-  '/api/auth/callback',
-  '/api/auth/register',
-  '/api/auth/verification/email',
-  '/api/auth/verification/email/resend',
-  '/api/auth/verification/email/confirm',
-  '/api/inmates/search',
-]
+const PUBLIC_ROUTES: string[] = []
 
 // Define rotas que requerem autenticação
 const PROTECTED_ROUTES = ['/admin', '/catalogo']
@@ -21,13 +12,10 @@ const AUTH_ROUTES = ['/login', '/auth/login', '/register', '/verify']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  console.log(`[MIDDLEWARE] Requisicao para: ${pathname} | Metodo: ${request.method}`)
   
-  // Obter o token/sessão do cookie
+  // Middleware apenas checa presenca de token emitido pela API Fastify
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value
-  const session = token ? await verifyAuthToken(token) : null
-  const isAuthenticated = !!session
-  const isEmailVerified = !!session?.emailVerifiedAt
+  const isAuthenticated = Boolean(token)
 
   // Verificar se é uma rota pública
   const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route))
@@ -45,11 +33,7 @@ export async function middleware(request: NextRequest) {
 
   // Se é rota de auth e o usuário está autenticado, redirecionar para admin
   if (isAuthRoute && isAuthenticated) {
-    if (!isEmailVerified) {
-      return NextResponse.redirect(new URL('/verify', request.url))
-    }
-    const target = session?.role === 'ADMIN' || session?.role === 'FISCAL_SEAP' ? '/admin' : '/catalogo'
-    return NextResponse.redirect(new URL(target, request.url))
+    return NextResponse.redirect(new URL('/catalogo', request.url))
   }
 
   // Se é rota de auth e não está autenticado, permitir acesso
@@ -64,9 +48,6 @@ export async function middleware(request: NextRequest) {
 
   // Se é rota protegida e está autenticado, permitir acesso
   if (isProtectedRoute && isAuthenticated) {
-    if (pathname.startsWith('/catalogo') && !isEmailVerified) {
-      return NextResponse.redirect(new URL('/verify', request.url))
-    }
     return NextResponse.next()
   }
 

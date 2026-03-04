@@ -91,8 +91,8 @@ export const authMagicLinkRoute: FastifyPluginAsyncZod = async (app) => {
         VALUES (${user.email}, ${tokenHash}, ${expiresAt.toISOString()}, 0)
       `
 
-      const frontendUrl = process.env.FRONTEND_ORIGIN ?? 'http://localhost:3000'
-      const link = `${frontendUrl}/api/auth/callback?token=${encodeURIComponent(token)}`
+      const apiOrigin = process.env.API_PUBLIC_ORIGIN ?? 'http://localhost:3333'
+      const link = `${apiOrigin}/auth/callback?token=${encodeURIComponent(token)}`
 
       await sendMagicLinkEmail({
         to: user.email,

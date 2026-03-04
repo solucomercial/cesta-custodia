@@ -1,6 +1,7 @@
 import type { FastifyRequest } from 'fastify'
 
 const DEFAULT_TOKEN_TTL_SECONDS = 60 * 60 * 8
+export const AUTH_COOKIE_NAME = 'auth_token'
 
 export const AUTH_TOKEN_TTL_SECONDS = Number(
   process.env.AUTH_TOKEN_TTL_SECONDS ?? DEFAULT_TOKEN_TTL_SECONDS,
@@ -131,7 +132,7 @@ export function getAuthTokenFromCookieHeader(cookieHeader: string | null) {
   const parts = cookieHeader.split(';')
   for (const part of parts) {
     const [key, ...rest] = part.trim().split('=')
-    if (key === 'auth_token') {
+    if (key === AUTH_COOKIE_NAME) {
       return decodeURIComponent(rest.join('='))
     }
   }
@@ -149,7 +150,7 @@ function getBearerTokenFromHeader(authorizationHeader: string | undefined) {
 }
 
 export async function getAuthSessionFromFastifyRequest(request: FastifyRequest) {
-  const cookieToken = request.cookies?.auth_token
+  const cookieToken = request.cookies?.[AUTH_COOKIE_NAME]
   const headerToken = getBearerTokenFromHeader(request.headers.authorization)
   const token = cookieToken ?? headerToken ?? getAuthTokenFromCookieHeader(request.headers.cookie ?? null)
 

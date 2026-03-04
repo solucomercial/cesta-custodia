@@ -25,7 +25,7 @@ function getSmtpConfig() {
   }
 }
 
-let cachedTransporter: nodemailer.Transporter | null = null
+let cachedTransporter: ReturnType<typeof nodemailer.createTransport> | null = null
 
 function getTransporter() {
   if (!cachedTransporter) {
@@ -62,6 +62,27 @@ export async function sendMagicLinkEmail(params: {
       <p>Use o link abaixo para entrar no sistema:</p>
       <p><a href="${params.link}">${params.link}</a></p>
       <p>Este link expira em ${params.expiresAt.toISOString()}.</p>
+    `,
+  })
+}
+
+export async function sendVerificationEmail(params: {
+  to: string
+  code: string
+}) {
+  const { from } = getSmtpConfig()
+  const transporter = getTransporter()
+
+  await transporter.sendMail({
+    from,
+    to: params.to,
+    subject: 'Codigo de Verificacao - Cesta de Custodia',
+    text: `Seu codigo de verificacao: ${params.code}`,
+    html: `
+      <p>Ola,</p>
+      <p>Seu codigo de verificacao e:</p>
+      <p><strong style="font-size: 24px; letter-spacing: 4px;">${params.code}</strong></p>
+      <p>Se voce nao solicitou este codigo, ignore este email.</p>
     `,
   })
 }

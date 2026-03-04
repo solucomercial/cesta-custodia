@@ -18,7 +18,7 @@ import {
 import { useCart } from '@/lib/cart-store'
 import { formatCurrency } from '@/lib/types'
 import type { BuyerProfile, CheckoutInmateInput } from '@/lib/types'
-import { createOrder } from '@/services/api'
+import { createOrder, validateSipen } from '@/services/api'
 import { toast } from 'sonner'
 
 export function CheckoutDialog({
@@ -81,28 +81,16 @@ export function CheckoutDialog({
     setSipenError('')
 
     try {
-      const res = await fetch('/api/sipen/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          buyer_cpf: buyer.cpf,
-          inmate: inmateInput,
-        }),
+      const data = await validateSipen({
+        buyer_cpf: buyer.cpf,
+        inmate: inmateInput,
       })
-
-      if (!res.ok) {
-        const data = await res.json()
-        setSipenStatus('rejected')
-        setSipenError(data.error || 'Validacao SIPEN recusada')
-        return
-      }
-
-      const data = await res.json()
       setSipenStatus('approved')
       setSipenProtocol(data.protocol)
-    } catch {
+    } catch (error) {
       setSipenStatus('rejected')
-      setSipenError('Erro na validacao SIPEN. Tente novamente.')
+      const message = error instanceof Error ? error.message : 'Erro na validacao SIPEN. Tente novamente.'
+      setSipenError(message)
     }
   }
 
