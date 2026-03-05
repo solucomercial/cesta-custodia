@@ -3,7 +3,7 @@ FROM node:20-alpine AS base
 
 # 1. Dependências
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat ca-certificates
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
