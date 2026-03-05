@@ -39,7 +39,15 @@ export const authCallbackRoute: FastifyPluginAsyncZod = async (app) => {
       // Isso evita cair em "magic=used" ao abrir o link novamente.
       const existingSession = await getAuthSessionFromFastifyRequest(request)
       if (existingSession) {
-        return reply.redirect(`${frontendOrigin}${getTargetPath(existingSession.role)}`)
+        const existingToken = request.cookies?.[AUTH_COOKIE_NAME]
+        const nextPath = getTargetPath(existingSession.role)
+
+        if (existingToken) {
+          const fragment = `token=${encodeURIComponent(existingToken)}&next=${encodeURIComponent(nextPath)}`
+          return reply.redirect(`${frontendOrigin}/login#${fragment}`)
+        }
+
+        return reply.redirect(`${frontendOrigin}/login`)
       }
 
       if (!token) {
