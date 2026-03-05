@@ -14,13 +14,15 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Gera o diretório 'dist' através do compilador TypeScript
-RUN npx tsc
+# Forçamos o outDir para 'dist' para garantir que a pasta seja criada, 
+# já que o tsconfig.json não possui a propriedade outDir definida.
+RUN npx tsc --outDir dist
 
 # 3. Runner
 FROM base AS runner
 WORKDIR /app
-ENV NODE_ENV production
+# Atualizado para o formato key=value para evitar avisos de legado
+ENV NODE_ENV=production
 
 # Copia apenas o necessário para rodar
 COPY --from=builder /app/dist ./dist
