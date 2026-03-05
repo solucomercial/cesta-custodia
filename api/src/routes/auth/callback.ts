@@ -1,7 +1,12 @@
 import crypto from 'node:crypto'
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { z } from 'zod'
-import { AUTH_COOKIE_NAME, AUTH_TOKEN_TTL_SECONDS, createAuthToken } from '@/lib/auth'
+import {
+  AUTH_COOKIE_NAME,
+  AUTH_TOKEN_TTL_SECONDS,
+  createAuthToken,
+  getAuthSessionFromFastifyRequest,
+} from '@/lib/auth'
 import { sql } from '@/lib/db'
 
 function hashToken(token: string) {
@@ -29,6 +34,13 @@ export const authCallbackRoute: FastifyPluginAsyncZod = async (app) => {
     async (request, reply) => {
       const token = request.query.token
       const frontendOrigin = process.env.FRONTEND_ORIGIN ?? 'http://localhost:3000'
+
+      // Se o usuário já está autenticado (cookie válido), não precisa consumir magic link.
+      // Isso evita cair em "magic=used" ao abrir o link novamente.
+      const existingSession = await getAuthSessionFromFastifyRequest(request)
+      if (existingSession) {
+        return reply.redirect(`${frontendOrigin}${getTargetPath(existingSession.role)}`)
+      }
 
       if (!token) {
         return reply.redirect(`${frontendOrigin}/login?magic=missing`)
