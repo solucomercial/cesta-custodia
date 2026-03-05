@@ -1,0 +1,50 @@
+{
+  "$schema": "https://www.schemastore.org/tsconfig",
+  "_version": "24.0.0",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "es2024",
+      "ESNext.Array",
+      "ESNext.Collection",
+      "ESNext.Error",
+      "ESNext.Iterator",
+      "ESNext.Promise"
+    ],
+    "module": "nodenext",
+    "target": "es2024",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node16",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "allowJs": true,
+    "noEmit": true,
+    "incremental": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "next-env.d.ts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts",
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
