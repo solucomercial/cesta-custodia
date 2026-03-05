@@ -1,4 +1,56 @@
+import type { AuditLog, Inmate, PrisonUnit, Product } from '@/lib/types'
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'
+
+export type OrderStatus = 'PENDENTE_SIPEN' | 'PAGO' | 'PREPARANDO' | 'EM_TRANSITO' | 'ENTREGUE' | 'CANCELADO'
+
+export type Order = {
+  id: string
+  buyer_id: string
+  inmate_id: string | null
+  status: OrderStatus
+  sipen_protocol: string | null
+  total_value: number
+  delivery_fee: number
+  fuesp_tax: number
+  prescription_url: string | null
+  prescription_validation_code: string | null
+  created_at: string
+  updated_at: string
+  buyer_name?: string
+  buyer_cpf?: string
+  inmate_name?: string
+  inmate_registration?: string
+  prison_unit_name?: string
+  item_count?: number
+}
+
+export type BuyerProfile = {
+  id: string
+  user_id: string
+  name: string
+  cpf: string
+  rg: string | null
+  birth_date: string
+  address: string
+  phone: string
+  professional_type?: 'ADVOGADO' | 'AGENTE_CONSULAR' | 'OUTRO'
+  oab_number?: string | null
+  consular_registration?: string | null
+  email: string
+  email_verified_at: string | null
+}
+
+export type MeResponse = {
+  user: {
+    id: string
+    email: string
+    role: string
+    email_verified_at: string | null
+    name?: string
+  }
+  buyer: BuyerProfile | null
+}
 
 export class ApiError extends Error {
   status: number
@@ -28,12 +80,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const authEndpoints = ['/auth/login', '/auth/register', '/auth/magic-link']
     const isAuthRequest = authEndpoints.some((endpoint) => path.startsWith(endpoint))
 
-    if (!isAuthRequest && typeof window !== 'undefined') {
-      const { pathname } = window.location
+    const browser = typeof globalThis !== 'undefined'
+      ? (globalThis as { location?: { pathname?: string; assign?: (url: string) => void } })
+      : undefined
+    if (!isAuthRequest && browser?.location?.pathname) {
+      const { pathname } = browser.location
       const isOnAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/verify')
 
       if (!isOnAuthPage) {
-        window.location.assign('/login')
+        browser.location.assign?.('/login')
       }
     }
   }
@@ -125,11 +180,11 @@ export function getProducts(category?: string, unitId?: string) {
   if (unitId) params.append('unit_id', unitId)
 
   const queryString = params.toString()
-  return request<any[]>(`/products${queryString ? `?${queryString}` : ''}`)
+  return request<Product[]>(`/products${queryString ? `?${queryString}` : ''}`)
 }
 
 export function getPrisonUnits() {
-  return request<any[]>('/prison-units')
+  return request<PrisonUnit[]>('/prison-units')
 }
 
 export function getAddressByCep(cep: string) {
@@ -139,10 +194,10 @@ export function getAddressByCep(cep: string) {
 
 export function searchInmate(registration: string) {
   const params = new URLSearchParams({ registration })
-  return request<any>(`/inmates/search?${params.toString()}`)
+  return request<Inmate>(`/inmates/search?${params.toString()}`)
 }
 
-export function createOrder(payload: any) {
+export function createOrder(payload: Record<string, unknown>) {
   return request<{ id: string; sipen_protocol: string }>('/orders', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -182,7 +237,11 @@ export function confirmEmailVerification(payload: VerifyEmailPayload) {
 }
 
 export function getMe() {
-  return request<{ user: any; buyer: any | null }>('/auth/me')
+  return request<MeResponse>('/auth/me')
+}
+
+export function getOrders() {
+  return request<Order[]>('/orders')
 }
 
 export function updateOrderStatus(id: string, status: string) {
@@ -193,9 +252,9 @@ export function updateOrderStatus(id: string, status: string) {
 }
 
 export function getAdminStats() {
-  return request<any>('/admin/stats')
+  return request<Record<string, unknown>>('/admin/stats')
 }
 
 export function getAuditLogs() {
-  return request<any[]>('/admin/audit')
+  return request<AuditLog[]>('/admin/audit')
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { ShoppingCart, Trash2, Plus, Minus, X, Truck, Building2, ArrowRight } from 'lucide-react'
+import { ShoppingCart, Trash2, Plus, Minus, Truck, Building2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'

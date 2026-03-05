@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { Package, Plus, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -28,14 +29,13 @@ export function ProductCard({ product }: { product: Product }) {
     <Card className="group flex flex-col overflow-hidden transition-shadow hover:shadow-md">
       <div className="relative h-32 w-full overflow-hidden bg-secondary/50">
       {product.image_url ? (
-        <img
+        <Image
           src={product.image_url}
           alt={product.name}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
-          onError={(e) => {
-            // Fallback caso a URL da imagem falhe
-            (e.currentTarget as HTMLImageElement).style.display = 'none';
-          }}
+          fill
+          className="object-cover transition-transform duration-300 group-hover:scale-110"
+          sizes="(max-width: 768px) 100vw, 25vw"
+          unoptimized
         />
       ) : (
         <div className="flex h-full items-center justify-center">

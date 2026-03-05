@@ -1,8 +1,8 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   ShieldCheck,
   Package,
-  ClipboardList,
   Truck,
   Lock,
   ArrowRight,
@@ -67,7 +67,7 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white shadow-md">
-              <img src="/solu-web.png" alt="Logo" />
+              <Image src="/solu-web.png" alt="Logo" width={36} height={36} />
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-bold leading-tight text-foreground">Cesta de Custodia</span>
@@ -89,8 +89,14 @@ export default function HomePage() {
       <section className="border-b border-border bg-card">
         <div className="mx-auto max-w-7xl px-4 py-16 md:py-24">
           <div className="mx-auto max-w-3xl text-center">
-            <div className='w-60 items-center justify-center mx-auto mb-4 flex'>
-              <img src="/logo-solu-web.png" alt="Logo Soluções Serviços Terceirizados" />
+            <div className="mx-auto mb-4 flex w-60 items-center justify-center">
+              <Image
+                src="/logo-solu-web.png"
+                alt="Logo Soluções Serviços Terceirizados"
+                width={240}
+                height={72}
+                className="h-auto w-full"
+              />
             </div>
 
             <h1 className="text-balance text-3xl font-bold tracking-tight text-foreground md:text-5xl">

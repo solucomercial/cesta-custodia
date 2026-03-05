@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -93,7 +94,7 @@ function VerifyPageContent() {
     <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
       <div className="w-full max-w-md space-y-6 rounded-xl border bg-card p-8 shadow-lg">
         <div className="space-y-2 text-center">
-          <img src="/logo-solu-web.png" alt="Logo" className="mx-auto h-12" />
+          <Image src="/logo-solu-web.png" alt="Logo" width={160} height={48} className="mx-auto h-12 w-auto" />
           <h2 className="text-2xl font-bold tracking-tight">Confirmar Email</h2>
           <p className="text-sm text-muted-foreground">
             Digite o codigo enviado para o seu email para liberar o acesso.

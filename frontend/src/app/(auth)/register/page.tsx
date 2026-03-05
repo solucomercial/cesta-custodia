@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -106,11 +107,12 @@ export default function RegisterPage() {
   const requiresOab = form.professional_type === 'ADVOGADO'
   const requiresConsular = form.professional_type === 'AGENTE_CONSULAR'
 
-  useEffect(() => {
-    const cepLimpo = form.address_zip_code.replace(/\D/g, '')
+  const cepLimpo = form.address_zip_code.replace(/\D/g, '')
+  const isCepComplete = cepLimpo.length === 8
+  const canEditAddress = isCepComplete && addressUnlocked
 
-    if (cepLimpo.length !== 8) {
-      setAddressUnlocked(false)
+  useEffect(() => {
+    if (!isCepComplete) {
       return
     }
 
@@ -129,14 +131,14 @@ export default function RegisterPage() {
         setAddressUnlocked(true)
 
         toast.success('Endereco preenchido automaticamente')
-      } catch (error) {
+      } catch {
         setAddressUnlocked(false)
         toast.error('CEP nao encontrado, digite um CEP valido')
       }
     }
 
     handleCepLookup()
-  }, [form.address_zip_code])
+  }, [cepLimpo, isCepComplete])
 
   useEffect(() => {
     return () => {
@@ -206,7 +208,7 @@ export default function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4 py-10">
       <div className="w-full max-w-2xl space-y-6 rounded-xl border bg-card p-8 shadow-lg">
         <div className="space-y-2 text-center">
-          <img src="/logo-solu-web.png" alt="Logo" className="mx-auto h-12" />
+          <Image src="/logo-solu-web.png" alt="Logo" width={160} height={48} className="mx-auto h-12 w-auto" />
           <h2 className="text-2xl font-bold tracking-tight">Cadastro do Comprador</h2>
           <p className="text-sm text-muted-foreground">
             Informe seus dados para liberar o acesso ao catalogo.
@@ -303,7 +305,7 @@ export default function RegisterPage() {
                 }
                 placeholder="Rua"
                 className="md:col-span-2"
-                disabled={!addressUnlocked}
+                disabled={!canEditAddress}
               />
               <Input
                 value={form.address_number}
@@ -334,7 +336,7 @@ export default function RegisterPage() {
                   }))
                 }
                 placeholder="Bairro"
-                disabled={!addressUnlocked}
+                disabled={!canEditAddress}
               />
               <Input
                 value={form.address_city}
@@ -345,7 +347,7 @@ export default function RegisterPage() {
                   }))
                 }
                 placeholder="Cidade"
-                disabled={!addressUnlocked}
+                disabled={!canEditAddress}
               />
               <Input
                 value={form.address_state}
@@ -356,7 +358,7 @@ export default function RegisterPage() {
                   }))
                 }
                 placeholder="UF"
-                disabled={!addressUnlocked}
+                disabled={!canEditAddress}
               />
               <Input
                 value={form.address_zip_code}

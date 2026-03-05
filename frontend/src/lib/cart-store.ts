@@ -87,9 +87,9 @@ export function useCart() {
     total,
     itemCount,
     hasMedicamentos,
-    addToCart: useCallback(addToCart, []),
-    removeFromCart: useCallback(removeFromCart, []),
-    updateQuantity: useCallback(updateQuantity, []),
-    clearCart: useCallback(clearCart, []),
+    addToCart: useCallback((product: Product, quantity: number = 1) => addToCart(product, quantity), []),
+    removeFromCart: useCallback((productId: string) => removeFromCart(productId), []),
+    updateQuantity: useCallback((productId: string, quantity: number) => updateQuantity(productId, quantity), []),
+    clearCart: useCallback(() => clearCart(), []),
   }
 }

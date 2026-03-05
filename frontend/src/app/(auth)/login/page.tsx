@@ -2,6 +2,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -71,7 +72,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
       <div className="w-full max-w-md space-y-8 rounded-xl border bg-card p-8 shadow-lg">
         <div className="text-center">
-          <img src="/logo-solu-web.png" alt="Logo" className="mx-auto h-12 mb-4" />
+          <Image src="/logo-solu-web.png" alt="Logo" width={160} height={48} className="mx-auto mb-4 h-12 w-auto" />
           <h2 className="text-2xl font-bold tracking-tight">Cesta de Custodia</h2>
           <p className="text-sm text-muted-foreground">Portal de Acesso ao Familiar e Representante</p>
         </div>
