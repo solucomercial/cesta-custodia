@@ -1,13 +1,12 @@
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import * as schema from '@/lib/db/schema'
+import { databaseSslEnabled, databaseSslRejectUnauthorized, env } from '@/lib/env'
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL is missing')
-}
-
-const client = postgres(process.env.DATABASE_URL, {
-  ssl: false,
+const client = postgres(env.DATABASE_URL, {
+  ssl: databaseSslEnabled
+    ? { rejectUnauthorized: databaseSslRejectUnauthorized }
+    : false,
   connect_timeout: 30,
   prepare: false,
 })

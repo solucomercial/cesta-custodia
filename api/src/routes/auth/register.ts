@@ -1,8 +1,10 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
+import crypto from 'node:crypto'
 import { z } from 'zod'
 import { sql } from '@/lib/db'
 import { createEmailVerification, isCooldownError } from '@/lib/email-verification'
 import { sendVerificationEmail } from '@/lib/email'
+import { hashPassword } from '@/lib/password'
 
 const registerBodySchema = z
   .object({
@@ -139,9 +141,13 @@ export const authRegisterRoute: FastifyPluginAsyncZod = async (app) => {
       })
 
       try {
+        const disabledPasswordHash = await hashPassword(
+          crypto.randomBytes(32).toString('hex'),
+        )
+
         const [newUser] = (await sql`
           INSERT INTO usuarios (email, senha_hash, papel)
-          VALUES (${normalizedEmail}, 'PENDENTE_VERIFICACAO', 'COMPRADOR')
+          VALUES (${normalizedEmail}, ${disabledPasswordHash}, 'COMPRADOR')
           RETURNING id
         `) as Array<{ id: string }>
 

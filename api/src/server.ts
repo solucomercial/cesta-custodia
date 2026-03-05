@@ -5,10 +5,12 @@ import {
   jsonSchemaTransform,
   type ZodTypeProvider
 } from 'fastify-type-provider-zod'
+import { z } from 'zod'
 import { fastifySwagger } from '@fastify/swagger'
 import { fastifyCors } from '@fastify/cors'
 import { fastifyCookie } from '@fastify/cookie'
 import ScalarApiReference from '@scalar/fastify-api-reference'
+import '@/lib/env'
 import { authLoginRoute } from '@/routes/auth/login'
 import { authMagicLinkRoute } from '@/routes/auth/magic-link'
 import { authRegisterRoute } from '@/routes/auth/register'
@@ -73,3 +75,29 @@ app.listen({ port: 3333, host: '0.0.0.0'}).then(() => {
   console.log('HTTP server running on http://localhost:3333')
   console.log('Docs available at http://localhost:3333/docs')
 })
+
+app.get(
+  '/health',
+  {
+    schema: {
+      tags: ['System'],
+      summary: 'Health check',
+      response: {
+        200: z.object({
+          ok: z.literal(true),
+          status: z.literal('ok'),
+          timestamp: z.string(),
+          uptime_seconds: z.number(),
+        }),
+      },
+    },
+  },
+  async () => {
+    return {
+      ok: true as const,
+      status: 'ok' as const,
+      timestamp: new Date().toISOString(),
+      uptime_seconds: Math.floor(process.uptime()),
+    }
+  },
+)

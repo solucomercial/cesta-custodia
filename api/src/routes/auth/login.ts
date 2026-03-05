@@ -2,12 +2,14 @@ import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 import { createAuthToken } from '@/lib/auth'
 import { sql } from '@/lib/db'
+import { verifyPassword } from '@/lib/password'
 
 type LoginUserRow = {
   id: string
   email: string
   papel: string
   email_verificado_em: string | Date | null
+  senha_hash: string
 }
 
 export const authLoginRoute: FastifyPluginAsyncZod = async (app) => {
@@ -48,16 +50,20 @@ export const authLoginRoute: FastifyPluginAsyncZod = async (app) => {
       }
 
       const users = (await sql`
-        SELECT id, email, papel, email_verificado_em
+        SELECT id, email, papel, email_verificado_em, senha_hash
         FROM usuarios
         WHERE email = ${loginEmail}
-        AND senha_hash = ${password}
         LIMIT 1
       `) as LoginUserRow[]
 
       const user = users[0]
 
       if (!user) {
+        return reply.code(401).send({ error: 'Credenciais invalidas' })
+      }
+
+      const isValidPassword = await verifyPassword(password, user.senha_hash)
+      if (!isValidPassword) {
         return reply.code(401).send({ error: 'Credenciais invalidas' })
       }
 
