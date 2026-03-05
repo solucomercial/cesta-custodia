@@ -104,7 +104,11 @@ export const authCallbackRoute: FastifyPluginAsyncZod = async (app) => {
           path: '/',
         })
 
-        return reply.redirect(`${frontendOrigin}${getTargetPath(user.papel)}`)
+        // Bearer-token flow: envia o JWT no fragment para o frontend capturar.
+        // (Fragment não é enviado ao servidor, reduzindo vazamento em logs.)
+        const nextPath = getTargetPath(user.papel)
+        const fragment = `token=${encodeURIComponent(authToken)}&next=${encodeURIComponent(nextPath)}`
+        return reply.redirect(`${frontendOrigin}/login#${fragment}`)
       } catch {
         return reply.redirect(`${frontendOrigin}/login?magic=error`)
       }

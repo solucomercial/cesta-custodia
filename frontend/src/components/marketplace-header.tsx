@@ -9,6 +9,7 @@ import { useCart } from '@/lib/cart-store'
 import { useState } from 'react'
 import { getMe } from '@/services/api'
 import useSWR from 'swr'
+import { clearBearerToken } from '@/lib/bearer-token'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,9 +30,7 @@ export function MarketplaceHeader({ onCartClick }: { onCartClick?: () => void })
       ? (globalThis as { location?: { assign?: (url: string) => void }; document?: { cookie?: string } })
       : undefined
     if (!browser) return
-    if (browser.document) {
-      browser.document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
-    }
+    clearBearerToken()
     browser.location?.assign?.('/login')
   }
 

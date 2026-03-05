@@ -1,4 +1,5 @@
 import type { AuditLog, Inmate, PrisonUnit, Product } from '@/lib/types'
+import { getBearerToken } from '@/lib/bearer-token'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'
 
@@ -65,11 +66,14 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const bearerToken = getBearerToken()
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: 'include',
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
       ...(init?.headers ?? {}),
     },
   })

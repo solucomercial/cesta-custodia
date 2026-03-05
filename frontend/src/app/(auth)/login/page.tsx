@@ -2,6 +2,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { requestMagicLink } from '@/services/api'
 import { toast } from 'sonner'
+import { getBearerToken, readFragmentParams, setBearerToken } from '@/lib/bearer-token'
 
 const digitsOnly = (value: string) => value.replace(/\D/g, '')
 
@@ -25,11 +28,47 @@ const formatCpf = (value: string) => {
 }
 
 export default function LoginPage() {
+  const router = useRouter()
   const [cpf, setCpf] = useState('')
   const [oab, setOab] = useState('')
   const [matricula, setMatricula] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+
+  useEffect(() => {
+    if (typeof globalThis === 'undefined' || !('location' in globalThis) || !('history' in globalThis)) {
+      return
+    }
+
+    const browser = globalThis as unknown as {
+      location: { hash: string; pathname: string; search: string }
+      history: { replaceState: (data: unknown, unused: string, url?: string | null) => void }
+      document?: { title: string }
+    }
+
+    const params = readFragmentParams(browser.location.hash)
+    const token = params.get('token')
+    const next = params.get('next')
+
+    if (token) {
+      setBearerToken(token)
+
+      // remove fragment to avoid keeping token in history/UI
+      browser.history.replaceState(
+        null,
+        browser.document?.title ?? '',
+        browser.location.pathname + browser.location.search,
+      )
+
+      router.replace(next || '/catalogo')
+      return
+    }
+
+    // Se já houver token salvo, não faz sentido ficar na tela de login.
+    if (getBearerToken()) {
+      router.replace('/catalogo')
+    }
+  }, [router])
 
   async function handleSubmit(mode: 'cpf' | 'oab' | 'matricula') {
     const normalizedCpf = digitsOnly(cpf)
