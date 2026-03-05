@@ -437,6 +437,11 @@ export default function RegisterPage() {
               Entrar
             </Link>
           </p>
+          <p className="text-center text-sm text-muted-foreground">
+            <Link href="/" className="text-primary hover:underline">
+            Voltar a tela inicial
+            </Link>
+          </p>
         </div>
       </div>
     </div>

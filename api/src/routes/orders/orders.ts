@@ -227,76 +227,139 @@ export const ordersRoute: FastifyPluginAsyncZod = async (app) => {
 
       const sipenProtocol = sipen_protocol || generateSipenProtocol()
 
-      const orderResult = (await sql`
-        INSERT INTO pedidos (
-          comprador_id,
-          interno_id,
-          interno_nome,
-          interno_matricula,
-          interno_ala,
-          interno_cela,
-          unidade_prisional_nome,
-          status,
-          protocolo_sipen,
-          valor_total,
-          frete,
-          taxa_fuesp,
-          url_receita,
-          codigo_validacao_receita
-        )
-        VALUES (
-          ${buyer.id},
-          ${internal?.id ?? null},
-          ${inmate.name},
-          ${inmate.registration || null},
-          ${inmate.ward},
-          ${inmate.cell},
-          ${inmate.prison_unit_name || null},
-          'PENDENTE_SIPEN',
-          ${sipenProtocol},
-          ${totalValue},
-          ${deliveryFee},
-          ${fuespTax},
-          ${prescription_url || null},
-          ${prescription_code || null}
-        )
-        RETURNING id
-      `) as Array<{ id: string }>
+      try {
+        const { orderId } = await sql.begin(async (tx) => {
+          // postgres-js types define TransactionSql via Omit<Sql,...>, which drops call signatures.
+          // At runtime `tx` is still a tagged-template function, so we cast to keep TS happy.
+          const txSql = tx as unknown as typeof sql
 
-      const orderId = orderResult[0].id
+          const orderResult = (await txSql`
+            INSERT INTO pedidos (
+              comprador_id,
+              interno_id,
+              interno_nome,
+              interno_matricula,
+              interno_ala,
+              interno_cela,
+              unidade_prisional_nome,
+              status,
+              protocolo_sipen,
+              valor_total,
+              frete,
+              taxa_fuesp,
+              url_receita,
+              codigo_validacao_receita
+            )
+            VALUES (
+              ${buyer.id},
+              ${internal?.id ?? null},
+              ${inmate.name},
+              ${inmate.registration || null},
+              ${inmate.ward},
+              ${inmate.cell},
+              ${inmate.prison_unit_name || null},
+              'PENDENTE_SIPEN',
+              ${sipenProtocol},
+              ${totalValue},
+              ${deliveryFee},
+              ${fuespTax},
+              ${prescription_url || null},
+              ${prescription_code || null}
+            )
+            RETURNING id
+          `) as Array<{ id: string }>
 
-      for (const item of items) {
-        await sql`
-          INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, preco_no_pedido)
-          VALUES (${orderId}, ${item.product_id}, ${item.quantity}, ${item.price})
-        `
+          const orderId = orderResult[0]?.id
+          if (!orderId) {
+            throw new Error('ORDER_CREATE_FAILED')
+          }
+
+          for (const item of items) {
+            const updated = (await txSql`
+              UPDATE produtos
+              SET quantidade_estoque = quantidade_estoque - ${item.quantity},
+                  atualizado_em = now()
+              WHERE id = ${item.product_id}
+                AND quantidade_estoque >= ${item.quantity}
+              RETURNING id, quantidade_estoque
+            `) as Array<{ id: string; quantidade_estoque: number }>
+
+            if (updated.length === 0) {
+              const current = (await txSql`
+                SELECT id, quantidade_estoque
+                FROM produtos
+                WHERE id = ${item.product_id}
+                LIMIT 1
+              `) as Array<{ id: string; quantidade_estoque: number }>
+
+              if (current.length === 0) {
+                throw new Error(`PRODUCT_NOT_FOUND:${item.product_id}`)
+              }
+
+              throw new Error(`INSUFFICIENT_STOCK:${item.product_id}`)
+            }
+
+            const newStock = Number(updated[0].quantidade_estoque)
+            const previousStock = newStock + item.quantity
+
+            await txSql`
+              INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, preco_no_pedido)
+              VALUES (${orderId}, ${item.product_id}, ${item.quantity}, ${item.price})
+            `
+
+            await txSql`
+              INSERT INTO logs_auditoria (usuario_id, pedido_id, acao, detalhes)
+              VALUES (${session.userId}, ${orderId}, 'ESTOQUE_REDUZIDO', ${JSON.stringify({
+                produto_id: item.product_id,
+                quantidade_removida: item.quantity,
+                estoque_anterior: previousStock,
+                estoque_atual: newStock,
+              })})
+            `
+          }
+
+          await txSql`
+            INSERT INTO logs_auditoria (usuario_id, pedido_id, acao, detalhes)
+            VALUES (${session.userId}, ${orderId}, 'PEDIDO_CRIADO', ${JSON.stringify({
+              sipen_protocol: sipenProtocol,
+              total_value: totalValue,
+              payment_method,
+              verification_method: 'EMAIL',
+              buyer_email: buyer.email,
+            })})
+          `
+
+          if (prescriptionValidation?.valid) {
+            await txSql`
+              INSERT INTO logs_auditoria (usuario_id, pedido_id, acao, detalhes)
+              VALUES (${session.userId}, ${orderId}, 'VALIDACAO_RECEITA', ${JSON.stringify({
+                validation_code: prescription_code,
+                doctor_name: prescriptionValidation.doctorName,
+                crm: prescriptionValidation.crm,
+                prescribed_at: prescriptionValidation.prescribedAt,
+                source: 'CFM/ITI',
+              })})
+            `
+          }
+
+          return { orderId }
+        })
+
+        return reply.code(201).send({ id: orderId, sipen_protocol: sipenProtocol })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+
+        if (message.startsWith('PRODUCT_NOT_FOUND:')) {
+          return reply.code(404).send({ error: 'Produto nao encontrado' })
+        }
+
+        if (message.startsWith('INSUFFICIENT_STOCK:')) {
+          return reply.code(400).send({ error: 'Estoque insuficiente para um ou mais itens' })
+        }
+
+        request.log.error({ err: error }, 'Erro ao criar pedido')
+        return reply.code(400).send({ error: 'Nao foi possivel criar o pedido' })
       }
-
-      await sql`
-        INSERT INTO logs_auditoria (usuario_id, pedido_id, acao, detalhes)
-        VALUES (${session.userId}, ${orderId}, 'PEDIDO_CRIADO', ${JSON.stringify({
-          sipen_protocol: sipenProtocol,
-          total_value: totalValue,
-          payment_method,
-          verification_method: 'EMAIL',
-          buyer_email: buyer.email,
-        })})
-      `
-
-      if (prescriptionValidation?.valid) {
-        await sql`
-          INSERT INTO logs_auditoria (usuario_id, pedido_id, acao, detalhes)
-          VALUES (${session.userId}, ${orderId}, 'VALIDACAO_RECEITA', ${JSON.stringify({
-            validation_code: prescription_code,
-            doctor_name: prescriptionValidation.doctorName,
-            crm: prescriptionValidation.crm,
-            prescribed_at: prescriptionValidation.prescribedAt,
-            source: 'CFM/ITI',
-          })})
-        `
-      }
-
-      return reply.code(201).send({ id: orderId, sipen_protocol: sipenProtocol })
     },
   )
 }

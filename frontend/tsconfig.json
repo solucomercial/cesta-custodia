@@ -4,6 +4,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "lib": [
+      "dom",
+      "dom.iterable",
       "es2024",
       "ESNext.Array",
       "ESNext.Collection",

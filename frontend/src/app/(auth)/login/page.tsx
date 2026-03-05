@@ -91,7 +91,8 @@ export default function LoginPage() {
                 placeholder="000.000.000-00"
                 value={cpf}
                 onChange={(e) => {
-                  setCpf(formatCpf(e.target.value))
+                  const value = (e.target as unknown as { value: string }).value
+                  setCpf(formatCpf(value))
                   setSuccessMessage('')
                 }}
                 inputMode="numeric"
@@ -114,7 +115,8 @@ export default function LoginPage() {
                 placeholder="Numero da OAB"
                 value={oab}
                 onChange={(e) => {
-                  setOab(e.target.value)
+                  const value = (e.target as unknown as { value: string }).value
+                  setOab(value)
                   setSuccessMessage('')
                 }}
               />
@@ -136,7 +138,8 @@ export default function LoginPage() {
                 placeholder="Numero da matricula"
                 value={matricula}
                 onChange={(e) => {
-                  setMatricula(e.target.value)
+                  const value = (e.target as unknown as { value: string }).value
+                  setMatricula(value)
                   setSuccessMessage('')
                 }}
               />
@@ -161,6 +164,9 @@ export default function LoginPage() {
         <div className="pt-4">
           <div className="mt-2 text-center text-sm text-muted-foreground">
             Ainda nao tem uma conta? <a href="/register" className="text-primary hover:underline">Cadastre-se aqui</a>
+          </div>
+          <div className="mt-2 text-center text-sm text-muted-foreground">
+            <a href="/" className="text-primary hover:underline">Voltar a tela inicial</a>
           </div>
         </div>
       </div>
