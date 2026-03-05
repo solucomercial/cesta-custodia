@@ -4,9 +4,7 @@ import * as schema from '@/lib/db/schema'
 import { databaseSslEnabled, databaseSslRejectUnauthorized, env } from '@/lib/env'
 
 const client = postgres(env.DATABASE_URL, {
-  ssl: databaseSslEnabled
-    ? { rejectUnauthorized: databaseSslRejectUnauthorized }
-    : false,
+  ssl: require,
   connect_timeout: 30,
   prepare: false,
 })
