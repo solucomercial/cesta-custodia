@@ -7,7 +7,6 @@
     "dev": "tsx watch --env-file=.env src/server.ts",
     "build": "tsc && tsc-alias -p tsconfig.json",
     "check:db": "node dist/scripts/check-db.js",
-    "prestart": "npm run check:db",
     "start": "node dist/server.js",
     "format": "biome format --write",
     "db:generate": "drizzle-kit generate",
