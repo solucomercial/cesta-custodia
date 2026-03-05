@@ -86,8 +86,8 @@ export const authCallbackRoute: FastifyPluginAsyncZod = async (app) => {
 
         reply.setCookie(AUTH_COOKIE_NAME, authToken, {
           httpOnly: true,
-          sameSite: 'lax',
-          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'none', // Alterado de 'lax' para 'none'
+          secure: true,      // Deve ser sempre true para 'none'
           maxAge: AUTH_TOKEN_TTL_SECONDS,
           path: '/',
         })
