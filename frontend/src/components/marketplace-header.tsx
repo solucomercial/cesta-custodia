@@ -30,6 +30,7 @@ export function MarketplaceHeader({ onCartClick }: { onCartClick?: () => void })
       ? (globalThis as { location?: { assign?: (url: string) => void }; document?: { cookie?: string } })
       : undefined
     if (!browser) return
+    void fetch('/api/auth/session', { method: 'DELETE' }).catch(() => null)
     clearBearerToken()
     browser.location?.assign?.('/login')
   }

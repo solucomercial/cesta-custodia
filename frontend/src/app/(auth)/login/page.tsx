@@ -36,38 +36,53 @@ export default function LoginPage() {
   const [successMessage, setSuccessMessage] = useState('')
 
   useEffect(() => {
-    if (typeof globalThis === 'undefined' || !('location' in globalThis) || !('history' in globalThis)) {
-      return
-    }
+    void (async () => {
+      if (typeof globalThis === 'undefined' || !('location' in globalThis) || !('history' in globalThis)) {
+        return
+      }
 
-    const browser = globalThis as unknown as {
-      location: { hash: string; pathname: string; search: string }
-      history: { replaceState: (data: unknown, unused: string, url?: string | null) => void }
-      document?: { title: string }
-    }
+      const browser = globalThis as unknown as {
+        location: { hash: string; pathname: string; search: string }
+        history: { replaceState: (data: unknown, unused: string, url?: string | null) => void }
+        document?: { title: string }
+        fetch?: typeof fetch
+      }
 
-    const params = readFragmentParams(browser.location.hash)
-    const token = params.get('token')
-    const next = params.get('next')
+      const params = readFragmentParams(browser.location.hash)
+      const token = params.get('token')
+      const next = params.get('next')
 
-    if (token) {
-      setBearerToken(token)
+      if (token) {
+        // Persist for API calls (bearer)
+        setBearerToken(token)
 
-      // remove fragment to avoid keeping token in history/UI
-      browser.history.replaceState(
-        null,
-        browser.document?.title ?? '',
-        browser.location.pathname + browser.location.search,
-      )
+        // Persist for Next middleware (server-side gate)
+        try {
+          await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+          })
+        } catch {
+          // best-effort; local token still enables API calls
+        }
 
-      router.replace(next || '/catalogo')
-      return
-    }
+        // remove fragment to avoid keeping token in history/UI
+        browser.history.replaceState(
+          null,
+          browser.document?.title ?? '',
+          browser.location.pathname + browser.location.search,
+        )
 
-    // Se já houver token salvo, não faz sentido ficar na tela de login.
-    if (getBearerToken()) {
-      router.replace('/catalogo')
-    }
+        router.replace(next || '/catalogo')
+        return
+      }
+
+      // Se já houver token salvo, não faz sentido ficar na tela de login.
+      if (getBearerToken()) {
+        router.replace('/catalogo')
+      }
+    })()
   }, [router])
 
   async function handleSubmit(mode: 'cpf' | 'oab' | 'matricula') {
