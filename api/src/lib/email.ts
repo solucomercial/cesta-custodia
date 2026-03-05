@@ -45,15 +45,21 @@ function getBaseTemplate(content: string) {
 function getSmtpConfig() {
   const host = process.env.SMTP_HOST
   const from = process.env.SMTP_FROM
+  const user = process.env.SMTP_USER
+
+  console.log('SMTP: Verificando configurações...')
+  console.log(
+    `SMTP: Host=${host}, From=${from}, User=${user ? 'Definido' : 'NÃO DEFINIDO'}`,
+  )
 
   if (!host || !from) {
+    console.error('SMTP: Falha na configuração - SMTP_HOST ou SMTP_FROM ausentes')
     throw new Error('SMTP_HOST e SMTP_FROM sao obrigatorios')
   }
 
   const port = Number(process.env.SMTP_PORT ?? DEFAULT_PORT)
   const secureEnv = process.env.SMTP_SECURE
   const secure = secureEnv ? secureEnv === 'true' : port === 465
-  const user = process.env.SMTP_USER
   const pass = process.env.SMTP_PASS
 
   return {
@@ -67,14 +73,14 @@ function getSmtpConfig() {
 
 let cachedTransporter: ReturnType<typeof nodemailer.createTransport> | null = null
 
-function getTransporter() {
+function getTransporter(config?: ReturnType<typeof getSmtpConfig>) {
   if (!cachedTransporter) {
-    const config = getSmtpConfig()
+    const resolved = config ?? getSmtpConfig()
     cachedTransporter = nodemailer.createTransport({
-      host: config.host,
-      port: config.port,
-      secure: config.secure,
-      auth: config.auth,
+      host: resolved.host,
+      port: resolved.port,
+      secure: resolved.secure,
+      auth: resolved.auth,
       tls: {
         rejectUnauthorized: false,
       },
@@ -89,8 +95,10 @@ export async function sendMagicLinkEmail(params: {
   link: string
   expiresAt: Date
 }) {
-  const { from } = getSmtpConfig()
-  const transporter = getTransporter()
+  console.log(`SMTP: Preparando envio de Magic Link para ${params.to}`)
+  const config = getSmtpConfig()
+  const { from } = config
+  const transporter = getTransporter(config)
 
   const content = `
     <h2 style="color: ${COLORS.primary}; margin-top: 0;">Olá,</h2>
@@ -106,21 +114,31 @@ export async function sendMagicLinkEmail(params: {
     <p style="font-size: 12px; color: ${COLORS.muted}; text-align: center;">Este link expira em ${params.expiresAt.toLocaleString('pt-BR')}.</p>
   `
 
-  await transporter.sendMail({
-    from,
-    to: params.to,
-    subject: 'Link de Acesso - Cesta de Custódia',
-    text: `Acesse o sistema através do link: ${params.link}`,
-    html: getBaseTemplate(content),
-  })
+  try {
+    const info = await transporter.sendMail({
+      from,
+      to: params.to,
+      subject: 'Link de Acesso - Cesta de Custódia',
+      text: `Acesse o sistema através do link: ${params.link}`,
+      html: getBaseTemplate(content),
+    })
+
+    const response = (info as { response?: unknown }).response
+    console.log('SMTP: Resposta do servidor de e-mail:', response ?? info)
+  } catch (error) {
+    console.error('SMTP: Erro ao enviar e-mail via Nodemailer:')
+    console.error(error)
+    throw error
+  }
 }
 
 export async function sendVerificationEmail(params: {
   to: string
   code: string
 }) {
-  const { from } = getSmtpConfig()
-  const transporter = getTransporter()
+  const config = getSmtpConfig()
+  const { from } = config
+  const transporter = getTransporter(config)
 
   const content = `
     <h2 style="color: ${COLORS.primary}; margin-top: 0;">Olá,</h2>

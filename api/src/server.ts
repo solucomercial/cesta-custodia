@@ -27,13 +27,31 @@ import { adminStatsRoute } from '@/routes/admin/stats'
 import { getCepRoute } from '@/routes/cep/get-cep'
 
 
-const app = fastify().withTypeProvider<ZodTypeProvider>()
+const app = fastify({
+  logger: true, // Ativa o logger nativo do Fastify
+}).withTypeProvider<ZodTypeProvider>()
+
+// Log para verificar qual origem está sendo carregada
+console.log('CORS: FRONTEND_ORIGIN configurado como:', process.env.FRONTEND_ORIGIN)
 
 app.setValidatorCompiler(validatorCompiler)
 app.setSerializerCompiler(serializerCompiler)
 
 app.register(fastifyCors, {
-  origin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:3000',
+  origin: (origin, cb) => {
+    console.log('CORS: Requisição vinda da origem:', origin)
+    const allowed = process.env.FRONTEND_ORIGIN ?? 'http://localhost:3000'
+
+    if (!origin || origin === allowed) {
+      cb(null, true)
+      return
+    }
+
+    console.error(
+      `CORS: Bloqueado. Origem ${origin} não coincide com ${allowed}`,
+    )
+    cb(new Error('Not allowed by CORS'), false)
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
   maxAge: 28800, // 8 hours
